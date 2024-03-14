@@ -24,14 +24,14 @@ R = eye(2); % 2x2 단위 행렬
 
 %% Data initializing
 true_trajectory = zeros(n, 2);
-estimated_trajectory = zeros(n, 2);
+estimated_trajectory = zeros(n, 4);
 sensor1_trajectory = zeros(n, 2);
 sensor2_trajectory = zeros(n, 2);
 
 target_state = initial_target_State';
 sensor1_state = initial_sensor1_State';
 sensor2_state = initial_sensor2_State';
-error=zeros(n,3);
+error=zeros(n,5);
 %% Main
 for i = 1:n
     % Prediction
@@ -65,16 +65,15 @@ for i = 1:n
     P = (eye(4) - K * H) * P;
     
     % save result
-    estimated_trajectory(i, :) = target_state(1:2)';
+    estimated_trajectory(i, :) = target_state(1:4)';
     e=[target_state'-target_state_real]';
     disp(det(P))
-    error(i,:)=[e(1);e(2); det(P)];
+    error(i,:)=[e(1);e(2); e(3);e(4);det(P)];
 end
 
 
 %% Plot
 figure;
-subplot(3, 1, 1);
 plot(true_trajectory(:, 1), true_trajectory(:, 2), 'k', 'LineWidth', 2); hold on;
 plot(estimated_trajectory(:, 1), estimated_trajectory(:, 2), 'g.', 'LineWidth', 2);
 plot(sensor1_trajectory(:, 1), sensor1_trajectory(:, 2), 'r-', 'LineWidth', 2);
@@ -85,17 +84,24 @@ ylabel('Y 위치');
 title('타겟의 궤적과 추정 궤적'); 
 legend('실제 궤적', '추정 궤적', '센서 위치');
 
-subplot(3, 1, 2);
+figure;
 plot(1:n, error(:, 1), 'm', 'LineWidth', 2);hold on;
 plot(1:n, error(:, 2), 'y', 'LineWidth', 2);
 xlabel('시간');
 ylabel('거리 오차');
 title('타겟 위치 추정의 거리 오차');
-legend('Error_x', 'Error_y');
+legend('Position Error_x', 'Position Error_y');
 
+figure;
+plot(1:n, error(:, 3), 'm', 'LineWidth', 2);hold on;
+plot(1:n, error(:, 4), 'y', 'LineWidth', 2);
+xlabel('시간');
+ylabel('속도 오차');
+title('타겟 위치 추정의 거리 오차');
+legend('Velocity Error_x', 'Velocity Error_y');
 
-subplot(3, 1, 3);
-plot(1:n, rad2deg(error(:, 3)), 'g', 'LineWidth', 2);hold on;
+figure;
+plot(1:n, rad2deg(error(:, 5)), 'g', 'LineWidth', 2);hold on;
 xlabel('시간');
 ylabel('detP');
 title('P');
