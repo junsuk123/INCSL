@@ -6,11 +6,12 @@ n = 1000; % 측정 횟수
 
 %% Target initalize
 target_heading =deg2rad(30); % deg
-vel_target=10;
+vel_target=20;
 initial_target_State = [400 0 vel_target*cos(target_heading) vel_target*sin(target_heading)]; % x y x' y'
 %% Sensor initaialize
 sensor1_heading =deg2rad(80); % deg
 sensor2_heading =deg2rad(20); % deg
+rotation=[deg2rad(-18); deg2rad(34)];%angle to change for sensor1, sensor2 
 
 vel_sensor1=9;
 vel_sensor2=12;
@@ -40,6 +41,10 @@ error=zeros(n,4);
 for i = 1:n
     % Prediction
     time=i*t;
+    if time==n/2
+        sensor1_state=rotate_model(sensor1_state,vel_sensor1,sensor1_heading,rotation(1));
+        sensor2_state=rotate_model(sensor2_state,vel_sensor2,sensor2_heading,rotation(2));
+    end
     target_state_real = motion_model(target_state_real,f);
     sensor1_state=motion_model(sensor1_state,f);
     sensor2_state=motion_model(sensor2_state,f);
@@ -103,6 +108,10 @@ legend('Velocity Error_x', 'Velocity Error_y');
 % physical model
 function x = motion_model(x,f)
     x=f*x;
+end
+function x=rotate_model(x,vel,prev_angle,update_angle)
+    x=x+[0;0; vel*cos(prev_angle-update_angle); vel*sin(prev_angle-update_angle)];
+    disp(["New vel : " x(3) x(4)  ])
 end
 
 % measurement_model
