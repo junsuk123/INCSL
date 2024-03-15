@@ -2,16 +2,17 @@ clc; clear; close all;
 
 %% 초기값 설정
 t = 1; % 측정 간격
-n = 1000; % 측정 횟수
+n = 30; % 측정 횟수
 
 %% Target initalize
 target_heading =deg2rad(30); % deg
 vel_target=20;
+rotation_target=deg2rad(30);
 initial_target_State = [400 0 vel_target*cos(target_heading) vel_target*sin(target_heading)]; % x y x' y'
 %% Sensor initaialize
 sensor1_heading =deg2rad(80); % deg
 sensor2_heading =deg2rad(20); % deg
-rotation=[deg2rad(-18); deg2rad(34)];%angle to change for sensor1, sensor2 
+rotation_sensor=[deg2rad(20); deg2rad(-50)];%angle to change for sensor1, sensor2 
 
 vel_sensor1=9;
 vel_sensor2=12;
@@ -20,11 +21,15 @@ initial_sensor2_State = [1000 0 vel_sensor2*cos(sensor2_heading) vel_sensor2*sin
 
 %% EKF Setting
 P = eye(4); % 4x4 단위 행렬
-Q = 0.1*eye(4); % 4x4 단위 행렬
+Q = 10*eye(4); % 4x4 단위 행렬
 R = 0.1*eye(2); % 2x2 단위 행렬
 f = [1 0 1 0;%model
     0 1 0 1;
     0 0 1 0;
+    0 0 0 1];
+sss = [1 0 1 0;%model
+    0 1 0 2;
+    0 0 2 0;
     0 0 0 1];
 %% Data initializing
 true_trajectory = zeros(n, 2);
@@ -36,14 +41,18 @@ target_state = initial_target_State';
 target_state_real=target_state;
 sensor1_state = initial_sensor1_State';
 sensor2_state = initial_sensor2_State';
-error=zeros(n,4);
+error=zeros(n,5);
+
 %% Main
 for i = 1:n
     % Prediction
     time=i*t;
-    if time==n/2
-        sensor1_state=rotate_model(sensor1_state,vel_sensor1,sensor1_heading,rotation(1));
-        sensor2_state=rotate_model(sensor2_state,vel_sensor2,sensor2_heading,rotation(2));
+    if time==10
+        sensor1_state=rotate_model(sensor1_state,vel_sensor1,sensor1_heading,rotation_sensor(1));
+        sensor2_state=rotate_model(sensor2_state,vel_sensor2,sensor2_heading,rotation_sensor(2));
+        target_state_real=rotate_model(target_state_real,vel_target,target_heading,rotation_target);
+        target_state=target_state_real+[e(1); e(2); e(3); e(4)];
+   
     end
     target_state_real = motion_model(target_state_real,f);
     sensor1_state=motion_model(sensor1_state,f);
@@ -63,18 +72,20 @@ for i = 1:n
     
     % measurement update
     z = [bearing_measurement(target_state_real', sensor1_state'); bearing_measurement(target_state_real', sensor2_state')];
-    z = z + randn(2,1)*deg2rad(1);
+    z = z + [randn(1,1)*deg2rad(2),randn(1,1)*deg2rad(2)];
     %State estimation
     h= [bearing_measurement(target_state, sensor1_state'); bearing_measurement(target_state, sensor2_state')];
     target_state = target_state + K * (z - h);
     P = (eye(4) - K * H) * P;
-    
+    DP=diag(P);
+    e(i,5)=DP(1);
+    disp([i "th" e(i,5)]);
     % save result
     estimated_trajectory(i, :) = target_state(1:4)';
-    e=[target_state'-target_state_real']';
-    error(i,:)=[e(1);e(2); e(3);e(4)];
+    er=[target_state'-target_state_real']';
+    e(1:4)=er(1:4);
+    error(i,:)=[e(1);e(2); e(3);e(4);e(5)];
 end
-
 
 %% Plot
 figure;
@@ -104,11 +115,18 @@ ylabel('속도 오차');
 title('타겟 위치 추정의 속도 오차(m/s)');
 legend('Velocity Error_x', 'Velocity Error_y');
 
+figure;
+plot(1:n, error(:, 5), 'm', 'LineWidth', 2);hold on;
+xlabel('시간');
+ylabel('P');
+title('P');
+
 %% Function
 % physical model
 function x = motion_model(x,f)
     x=f*x;
 end
+%change rotation
 function x=rotate_model(x,vel,prev_angle,update_angle)
     x=x+[0;0; vel*cos(prev_angle-update_angle); vel*sin(prev_angle-update_angle)];
     disp(["New vel : " x(3) x(4)  ])
