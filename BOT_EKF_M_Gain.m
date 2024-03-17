@@ -2,7 +2,7 @@ clc; clear; close all;
 
 %% 초기값 설정
 t = 1; % 측정 간격
-n = 3000; % 측정 횟수
+n = 50000; % 측정 횟수
 
 %% Target initalize
 target_heading =deg2rad(30); % deg
@@ -75,14 +75,14 @@ for i = 1:n
     G_noise=G_noise/(8*n);
     % measurement update
     z = [bearing_measurement(target_state_real', sensor1_state'); bearing_measurement(target_state_real', sensor2_state')];
-    z = z + [randn(1,1)*deg2rad(G_noise(1)),randn(1,1)*deg2rad(G_noise(2))];
+    z = z + [deg2rad(G_noise(1)*randn()),deg2rad(G_noise(2)*randn())];
     %State estimation
     h= [bearing_measurement(target_state, sensor1_state'); bearing_measurement(target_state, sensor2_state')];
     target_state = target_state + K * (z - h);
+    disp(z-h);
     P = (eye(4) - K * H) * P;
     DP=diag(P);
     e(i,5)=DP(1);
-    disp([i "th" e(i,5)]);
     % save result
     estimated_trajectory(i, :) = target_state(1:4)';
     er=[target_state'-target_state_real']';
