@@ -10,12 +10,12 @@ vel_target=20;
 rotation_target=deg2rad(20);
 initial_target_State = [400 0 vel_target*cos(target_heading) vel_target*sin(target_heading)]; % x y x' y'
 %% Sensor initaialize
-sensor1_heading =deg2rad(80); % deg
-sensor2_heading =deg2rad(20); % deg
-rotation_sensor=[deg2rad(90); deg2rad(20)];%angle to change for sensor1, sensor2 
+sensor1_heading =deg2rad(60); % deg
+sensor2_heading =deg2rad(10); % deg
+rotation_sensor=[deg2rad(90); deg2rad(-20)];%angle to change for sensor1, sensor2 
 
 vel_sensor1=17;
-vel_sensor2=19;
+vel_sensor2=21;
 initial_sensor1_State = [0 0 vel_sensor1*cos(sensor1_heading) vel_sensor1*sin(sensor1_heading)]; % sensor1_x sensor1_y sensor1_x' sensor1_y'
 initial_sensor2_State = [1000 0 vel_sensor2*cos(sensor2_heading) vel_sensor2*sin(sensor2_heading)]; % sensor2_x sensor2_y sensor2_x' sensor2_y'
 G_noise=[1;1];
@@ -48,7 +48,7 @@ error=zeros(n,5);
 for i = 1:n
     % Prediction
     time=i*t;
-    if time==1000
+    if time==n/2
         sensor1_state=rotate_model(sensor1_state,vel_sensor1,sensor1_heading,rotation_sensor(1));
         sensor2_state=rotate_model(sensor2_state,vel_sensor2,sensor2_heading,rotation_sensor(2));
         target_state_real=rotate_model(target_state_real,vel_target,target_heading,rotation_target);
@@ -72,7 +72,7 @@ for i = 1:n
     K = P * H' * inv(H * P * H' + R);
     G_noise(1)=norm(true_trajectory(i,1)-sensor1_trajectory(i,1),true_trajectory(i,2)-sensor1_trajectory(i,2));
     G_noise(2)=norm(true_trajectory(i,1)-sensor2_trajectory(i,1),true_trajectory(i,2)-sensor2_trajectory(i,2));
-    G_noise=G_noise/(8*n);
+    G_noise=G_noise/(4*n);
     % measurement update
     z = [bearing_measurement(target_state_real', sensor1_state'); bearing_measurement(target_state_real', sensor2_state')];
     z = z + [deg2rad(G_noise(1)*randn()),deg2rad(G_noise(2)*randn())];
