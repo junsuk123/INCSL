@@ -3,13 +3,13 @@ clc; clear; close all;
 
 %% 초기값 설정
 t = 1; % 측정 간격
-n = 50000; % 측정 횟수
+n = 9000; % 측정 횟수
 
 %% Target initalize
 target_heading =deg2rad(30); % deg
 vel_target=20;
 rotation_target=deg2rad(20);
-initial_target_State = [400 0 vel_target*cos(target_heading) vel_target*sin(target_heading)]; % x y x' y'
+initial_target_State = [400 0 vel_target*cos(target_heading) vel_target*sin(target_heading)]'; % x y x' y'
 %% Sensor initaialize
 sensor1_heading =deg2rad(60); % deg
 sensor2_heading =deg2rad(10); % deg
@@ -17,8 +17,8 @@ rotation_sensor=[deg2rad(90); deg2rad(-20)];%angle to change for sensor1, sensor
 
 vel_sensor1=17;
 vel_sensor2=21;
-initial_sensor1_State = [0 0 vel_sensor1*cos(sensor1_heading) vel_sensor1*sin(sensor1_heading)]; % sensor1_x sensor1_y sensor1_x' sensor1_y'
-initial_sensor2_State = [1000 0 vel_sensor2*cos(sensor2_heading) vel_sensor2*sin(sensor2_heading)]; % sensor2_x sensor2_y sensor2_x' sensor2_y'
+initial_sensor1_State = [0 0 vel_sensor1*cos(sensor1_heading) vel_sensor1*sin(sensor1_heading)]'; % sensor1_x sensor1_y sensor1_x' sensor1_y'
+initial_sensor2_State = [1000 0 vel_sensor2*cos(sensor2_heading) vel_sensor2*sin(sensor2_heading)]'; % sensor2_x sensor2_y sensor2_x' sensor2_y'
 G_noise=[1;1];
 
 %% EKF Setting
@@ -39,10 +39,10 @@ estimated_trajectory = zeros(n, 4);
 sensor1_trajectory = zeros(n, 2);
 sensor2_trajectory = zeros(n, 2);
 
-X_target_estm = initial_target_State';
-X_target_true=X_target_estm;
-sensor1_state = initial_sensor1_State';
-sensor2_state = initial_sensor2_State';
+target_state = initial_target_State;
+X=target_state;
+sensor1_state = initial_sensor1_State;
+sensor2_state = initial_sensor2_State;
 error=zeros(n,5);
 
 %% Main
@@ -52,21 +52,20 @@ for i = 1:n
     if time==n/2
         sensor1_state=rotate_model(sensor1_state,vel_sensor1,sensor1_heading,rotation_sensor(1));
         sensor2_state=rotate_model(sensor2_state,vel_sensor2,sensor2_heading,rotation_sensor(2));
-        X_target_true=rotate_model(X_target_true,vel_target,target_heading,rotation_target);
-        X_target_estm=X_target_true+[e(1); e(2); e(3); e(4)];
-   
+        target_state=rotate_model(target_state,vel_target,target_heading,rotation_target);
+        X=target_state+[e(1); e(2); e(3); e(4)];
     end
-    X_target_true = motion_model(X_target_true,target_model);
+    target_state = motion_model(target_state,target_model);
     sensor1_state=motion_model(sensor1_state,sensor_model);
     sensor2_state=motion_model(sensor2_state,sensor_model);
     
-    true_trajectory(i, :) = X_target_true(1:2)';
-    sensor1_trajectory(i, :) = sensor1_state(1:2)';
-    sensor2_trajectory(i, :) = sensor2_state(1:2)';
-    X_target_estm=target_model*X_target_estm;
+    true_trajectory(i, :) = target_state(1:2);
+    sensor1_trajectory(i, :) = sensor1_state(1:2);
+    sensor2_trajectory(i, :) = sensor2_state(1:2);
+    X=target_model*X;
 
     % 야코비안 계산
-    H = measurement_model(X_target_true', sensor1_state', sensor2_state');
+    H = measurement_model(X, sensor1_state, sensor2_state);
     %오차 공분산 예측
     P = prediction_step(P, Q);
     
@@ -76,19 +75,18 @@ for i = 1:n
     G_noise(2)=norm(true_trajectory(i,1)-sensor2_trajectory(i,1),true_trajectory(i,2)-sensor2_trajectory(i,2));
     G_noise=G_noise/(4*n);
     % 실제 경로의 상대 방위각 정보(참값)
-    z = [bearing_measurement(X_target_true', sensor1_state'); bearing_measurement(X_target_true', sensor2_state')];
-    % 참값에 노이즈 추가
-    z = z + [deg2rad(G_noise(1)*randn()),deg2rad(G_noise(2)*randn())];
-    % 상태 추정값을 상대 방위각 정보로 변환(?)-> 순서가 잘못된거 같음.
-    h= [bearing_measurement(X_target_estm, sensor1_state'); bearing_measurement(X_target_estm, sensor2_state')];
-    X_target_estm = X_target_estm + K * (z - h);
+    z = h(target_state,sensor1_state,sensor2_state);
+    % 참값에 노이즈 추가->센서값
+    z = z + [deg2rad(G_noise(1)*randn());deg2rad(G_noise(2)*randn())];
+    %비선형 측정 방정식h(X)
+    X = X + K * (z - h(X,sensor1_state,sensor2_state));
     P = (eye(4) - K * H) * P;
     DP=diag(P);
-    e(i,5)=DP(1);
+    e(i,5)=DP(2);
     disp(e(i,5));
     % save result
-    estimated_trajectory(i, :) = X_target_estm(1:4)';
-    er=[X_target_estm'-X_target_true']';
+    estimated_trajectory(i, :) = X(1:4);
+    er=X-target_state;
     e(1:4)=er(1:4);
     error(i,:)=[e(1);e(2); e(3);e(4);e(5)];
 end
@@ -106,11 +104,13 @@ title('타겟의 궤적과 추정 궤적(m)');
 legend('실제 궤적', '추정 궤적', '센서 위치');
 
 figure;
+
 plot(1:n, error(:, 1), 'm', 'LineWidth', 2);hold on;
 plot(1:n, error(:, 2), 'y', 'LineWidth', 2);
 xlabel('시간');
 ylabel('거리 오차');
 title('타겟 위치 추정의 거리 오차(m)');
+ylim([0 1000]);
 legend('Position Error_x', 'Position Error_y');
 
 figure;
@@ -145,15 +145,18 @@ function H = measurement_model(target_state, sensor1_state, sensor2_state)
     dy2 = target_state(2) - sensor2_state(2);
     q1 = dx1^2 + dy1^2;
     q2 = dx2^2 + dy2^2;
-    H = [-dy1/sqrt(q1) dx1/sqrt(q1) 0 0;
-         -dy2/sqrt(q2) dx2/sqrt(q2) 0 0];
+    H = [-dy1/(q1) dx1/(q1) 0 0;
+         -dy2/(q2) dx2/(q2) 0 0];
 end
 
 %타겟의 XY 위치 정보를 베어링 정보로 변환(센서 데이터화(Type: bearing)
-function z = bearing_measurement(target_state, sensor_state)
-    dx = target_state(1) - sensor_state(1);
-    dy = target_state(2) - sensor_state(2);
-    z = atan2(dy, dx);
+function z = h(target_state, sensor1_state,sensor2_state)
+    dx1 = target_state(1) - sensor1_state(1);
+    dy1 = target_state(2) - sensor1_state(2);
+    dx2 = target_state(1) - sensor2_state(1);
+    dy2 = target_state(2) - sensor2_state(2);
+    
+    z = [atan2(dy1, dx1);atan2(dy2,dx2)];
 end
 
 % P_prediction
