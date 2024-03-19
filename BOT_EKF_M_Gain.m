@@ -6,14 +6,14 @@ t = 1; % 측정 간격
 n = 9000; % 측정 횟수
 
 %% Target initalize
-target_heading =deg2rad(30); % deg
+target_heading =deg2rad(90); % deg
 vel_target=20;
-rotation_target=deg2rad(20);
+rotation_target=deg2rad(0);
 initial_target_State = [400 0 vel_target*cos(target_heading) vel_target*sin(target_heading)]'; % x y x' y'
 %% Sensor initaialize
-sensor1_heading =deg2rad(60); % deg
-sensor2_heading =deg2rad(10); % deg
-rotation_sensor=[deg2rad(90); deg2rad(-20)];%angle to change for sensor1, sensor2 
+sensor1_heading =deg2rad(90); % deg
+sensor2_heading =deg2rad(90); % deg
+rotation_sensor=[deg2rad(0); deg2rad(0)];%angle to change for sensor1, sensor2 
 
 vel_sensor1=17;
 vel_sensor2=21;
@@ -23,8 +23,8 @@ G_noise=[1;1];
 
 %% EKF Setting
 P = eye(4); % 오차 공분산 행렬
-Q = 10*eye(4); % 시스템 잡음 공분산 행렬
-R = 0.1*eye(2); % 측정 잡음 공분산 행렬
+Q = eye(4); % 시스템 잡음 공분산 행렬
+R = 0.01*eye(2); % 측정 잡음 공분산 행렬
 target_model = [1 0 1 0;%model
     0 1 0 1;
     0 0 1 0;
@@ -73,7 +73,7 @@ for i = 1:n
     K = P * H' * inv(H * P * H' + R);
     G_noise(1)=norm(true_trajectory(i,1)-sensor1_trajectory(i,1),true_trajectory(i,2)-sensor1_trajectory(i,2));
     G_noise(2)=norm(true_trajectory(i,1)-sensor2_trajectory(i,1),true_trajectory(i,2)-sensor2_trajectory(i,2));
-    G_noise=G_noise/(4*n);
+    G_noise=G_noise/(5*n);
     % 실제 경로의 상대 방위각 정보(참값)
     z = h(target_state,sensor1_state,sensor2_state);
     % 참값에 노이즈 추가->센서값
@@ -110,7 +110,6 @@ plot(1:n, error(:, 2), 'y', 'LineWidth', 2);
 xlabel('시간');
 ylabel('거리 오차');
 title('타겟 위치 추정의 거리 오차(m)');
-ylim([0 1000]);
 legend('Position Error_x', 'Position Error_y');
 
 figure;
