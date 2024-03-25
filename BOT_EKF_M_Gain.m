@@ -3,20 +3,20 @@ clc; clear; close all;
 
 %% 초기값 설정
 t = 1; % 측정 간격
-n = 9000; % 측정 횟수
+n = 1500; % 측정 횟수
 
 %% Target initalize
-target_heading =deg2rad(90); % deg
+target_heading =deg2rad(60); % deg
 vel_target=20;
-rotation_target=deg2rad(0);
+rotation_target=deg2rad(30);
 initial_target_State = [400 0 vel_target*cos(target_heading) vel_target*sin(target_heading)]'; % x y x' y'
 %% Sensor initaialize
-sensor1_heading =deg2rad(90); % deg
-sensor2_heading =deg2rad(90); % deg
-rotation_sensor=[deg2rad(0); deg2rad(0)];%angle to change for sensor1, sensor2 
+sensor1_heading =deg2rad(80); % deg
+sensor2_heading =deg2rad(20); % deg
+rotation_sensor=[deg2rad(30); deg2rad(-30)];%angle to change for sensor1, sensor2 
 
-vel_sensor1=17;
-vel_sensor2=21;
+vel_sensor1=11;
+vel_sensor2=10;
 initial_sensor1_State = [0 0 vel_sensor1*cos(sensor1_heading) vel_sensor1*sin(sensor1_heading)]'; % sensor1_x sensor1_y sensor1_x' sensor1_y'
 initial_sensor2_State = [1000 0 vel_sensor2*cos(sensor2_heading) vel_sensor2*sin(sensor2_heading)]'; % sensor2_x sensor2_y sensor2_x' sensor2_y'
 G_noise=[1;1];
